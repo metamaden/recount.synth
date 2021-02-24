@@ -100,7 +100,7 @@ check_h5_database <- function(comppath = file.path("recount-methylation-files",
 #' each channel type. This is called by the rules `get_rg_compilations` 
 #' and `run_dnam_pipeline`.
 #'
-#' @param files.dname Name of the instance files directory
+#' @param files.dname Name of the instance files directory.
 #' @param comp.dname Name of the instance compilations directory.
 #' @return NULL, generates data tables as side effect
 #' @export

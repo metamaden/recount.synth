@@ -6,16 +6,8 @@
 #
 
 require(data.table); require(rjson)
-library(recountmethylationManuscriptSupplement)
-
-library(recountmethylationManuscriptSupplement)
-library(HDF5Array)
-library(recountmethylation)
 library(wateRmelon) # for age predictions
 library(minfi) # for cell type and sex predictions
-
-library(recountmethylationManuscriptSupplement)
-library(recountmethylation)
 library(HDF5Array)
 library(minfi)
 library(ewastools)
