@@ -5,9 +5,6 @@
 # Preprocess available sample metadata
 #
 
-require(data.table); require(rjson)
-library(recountmethylationManuscriptSupplement)
-
 #------------------
 # md misc functions
 #------------------
@@ -47,7 +44,10 @@ get_atables <- function(ts, atable.fn = "geo_gse-atables_list",
     message("Making md dir ",md.dpath); dir.create(md.dpath)}
   message("Getting paths...")
   eqdpath <- file.path(files.dname, eq.dname) # equery dir path
-  eq.fpath <- get_eqfpath(eqdpath) # equery file path
+  eqd.ts <- max(as.numeric(gsub(".*\\.", "", list.files(eqdpath))))
+  eq.fpath <- recount.synth::get_eqfpath(ts = eqd.ts, eqdpath = eqdpath)
+  if(length(eq.fpath) == 0){
+    stop("Couldn't find an equery file with ts ", eqd.ts," at ", eqdpath, ".")}
   eq.fn <- gsub(".*/", "", eq.fpath) # equery file name
   message("Getting GSM IDs by GSE IDs, from equery file...")
   x <- scan(eq.fpath, what="", sep="\n");gsel <- list()
@@ -65,7 +65,7 @@ get_atables <- function(ts, atable.fn = "geo_gse-atables_list",
       lff <- lf.all[ffilt][1]; cond <- length(lff)>0 & !(lff=="NA"|is.na(lff))
       if(cond){
         fnj <- file.path(json.filt.dpath, lff)
-        lgse[[ggse[j]]] <- fromJSON(paste(readLines(fnj), collapse=""))}}
+        lgse[[ggse[j]]] <- rjson::fromJSON(paste(readLines(fnj), collapse=""))}}
     if(length(lgse) > 0){
       message("Making table columns from unique GSM keys..."); tcols <- c()
       for(l in 1:length(lgse)){
@@ -89,8 +89,7 @@ get_atables <- function(ts, atable.fn = "geo_gse-atables_list",
         }; tgse <- rbind(tgse, gvk); message(l)
       }; tgse.list[[gseid]] <- tgse
     }; message("gse:", g)
-  }
-  atable.fpath <- file.path(md.dpath, paste0(atable.fn,"_", ts, ".rda"))
+  };atable.fpath <- file.path(md.dpath, paste0(atable.fn,"_", ts, ".rda"))
   message("Saving annotation tables data to ", atable.fpath, "...")
   save(tgse.list, file = atable.fpath); return(NULL)
 }
@@ -106,6 +105,8 @@ get_atables <- function(ts, atable.fn = "geo_gse-atables_list",
 #' (integer or character).
 #' @param json.dname Name of directory, in files.dname, containing the instance 
 #' filtered sample/GSM JSON files ("gsm_json_filt").
+#' @param jsonext.regex Regex pattern to identify filtered JSON files 
+#' (".*\\.json.filt$").
 #' @param json.titlesdf.fn 
 #' @param md.dname Name of directory, in files.dname, containing the instance 
 #' metadata files ("metadata).
@@ -115,19 +116,20 @@ get_atables <- function(ts, atable.fn = "geo_gse-atables_list",
 #' @seealso md_preprocess(); md_postprocess(); get_atables()
 #' @export
 get_jsontitle <- function(ts, json.dname = "gsm_json_filt",
+                          jsonext.regex = ".*\\.json.filt$",
                           json.titlesdf.fn = "gsm_jsontitledf",
                           md.dname = "metadata", 
                           files.dname = "recount-methylation-files"){
   json.dpath <- file.path(files.dname, json.dname)
   md.dpath <- file.path(files.dname, md.dname)
   message("Looking for JSON files at path ", json.dpath, "...")
-  lf<-list.files(json.dpath);ffilt<-grepl(".*\\.json.filt$",lf);lff<-lf[ffilt]
+  lf<-list.files(json.dpath);ffilt<-grepl(jsonext.regex,lf);lff<-lf[ffilt]
   message("Getting JSON titles from ", length(lff), " files...")
   gsmtitledf <- matrix(nrow = 0, ncol = 2)
   for(jf in lff){
     jsym <- unlist(strsplit(jf, "\\.")); gsm.id <- jsym[2]
     json.lines <- readLines(file.path(json.dpath, jf))
-    json.convert <- fromJSON(paste(json.lines,collapse="")) 
+    json.convert <- rjson::fromJSON(paste(json.lines,collapse="")) 
     st.catch <- as.character(unlist(json.convert)["!Sample_title"])
     stm <- matrix(c(gsm.id, st.catch), nrow=1)
     gsmtitledf <- rbind(gsmtitledf, stm)

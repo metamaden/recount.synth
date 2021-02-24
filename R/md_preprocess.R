@@ -5,9 +5,6 @@
 # Preprocess available sample metadata
 #
 
-require(data.table); require(rjson)
-library(recountmethylationManuscriptSupplement)
-
 #------------------------
 # md preprocess functions
 #------------------------

@@ -64,18 +64,18 @@ getblocks <- function(slength, bsize){
 #' Get an edirect query file path
 #'
 #' Lookup and return an edirect query file matching pattern `fn.str`.
-#'
-#'@param fn.str File name string matching the queried file.
-#'@param eqdpath Path to directory containing the equery files
-#'@return Path to the queried edirect file. 
-#'@export
-get_eqfpath <- function(fn.str = "gsequery_filt.*",
-  eqdpath = file.path("recount-methylation-files", "equery")){
-  message("Getting files at eqdpath ", eqdpath, "...")
-  eqfl <- list.files(eqdpath);eqfn <- eqfl[grepl(fn.str, eqfl)]
-  if(length(eqfn) > 1){
-    eqts <- gsub(".*\\.", "", eqfn); eqfn <- eqfn[which(eqts == max(eqts))]
-  };eqfpath <- file.path(eqdpath, eqfn);return(eqfpath)
+#' 
+#' @param ts Timestamp. If NULL, get new timestamp using Python function.
+#' @param fn.str File name string matching the queried file ("gsequery_filt.*").
+#' @param eqdpath Path to directory containing the equery files.
+#' @return Path to the queried edirect file. 
+#' @export
+get_eqfpath <- function(ts, fn.str = "gsequery_filt.*",
+                        eqdpath = file.path("recount-methylation-files",
+                                            "equery")){
+  message("Getting files at eqdpath ",eqdpath,"...");eqfl<-list.files(eqdpath)
+  eqfn <- eqfl[grepl(fn.str, eqfl) & grepl(ts, eqfl)]
+  return(file.path(eqdpath, eqfn[1]))
 }
 
 #--------------
@@ -352,14 +352,14 @@ match1to2 <- function(d1, d2, ci1 = 2, ci2 = 1){
 #' (e.g. using rule `new_instance_md`), which includes the version and 
 #' timestamp for the `recountmethylation` instance.
 #'
-#' @param files.dname
-#' @param md.dname
+#' @param files.dname Files dir name for instance ("recount-methylation-files")
+#' @param md.dname Metadata dir name ("metadata").
 #' @return Metadata object containing the instance version and timestamp
 #' @export
 rmp_handle_metadata <- function(files.dname = "recount-methylation-files",
                                 md.dname = "metadata"){
   md.dpath <- file.path(files.dname, md.dname)
-  if(!dir.exists(md.dpath)){stop("Error, could find dir ", md.dpath,"...")}
+  if(!dir.exists(md.dpath)){stop("Couldn't find dir ", md.dpath,"...")}
   lfmd <- list.files(md.dpath); lfmd <- lfmd[grepl("metadata", lfmd)]
   if(length(lfmd) > 0){
     ts <- as.numeric(gsub(".*_|\\.rda", "", lfmd)); ts.max <- max(ts)
@@ -368,7 +368,7 @@ rmp_handle_metadata <- function(files.dname = "recount-methylation-files",
     message("Using metadata at ", md.fpath);md <- get(load(md.fpath))
     return(md)
   } else{
-    stop("Error, couldn't find metadata for this instance.", 
+    stop("Couldn't find metadata for this instance.", 
          " Try running the `new_inst_md` rule first.")}
   return(NULL)
 }
@@ -385,8 +385,8 @@ rmp_handle_platform <- function(settings.fname = "settings.py",
                                 src.path=file.path("recountmethylation_server", 
                                                      "src")){
   settings.fpath = file.path(src.path, settings.fname)
-  if(!file.exists(settings.fpath)){stop("Error, couldn't find ",settings.fn)}
-  accid <- gsub(" |.* '|'", "", readLines(settings.fpath, n = 31)[31])
+  if(!file.exists(settings.fpath)){stop("Couldn't find ",settings.fn)}
+  accid <- gsub(" |.* '|'", "", readLines(settings.fpath, n = 25)[25])
   pname <- ifelse(accid == "GPL13534", "hm450k",
                   ifelse(accid == "GPL21145", "epic-hm850k",
                          ifelse(accid == "GPL8490", "hm27k", "NA")))
