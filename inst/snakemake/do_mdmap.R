@@ -6,4 +6,4 @@
 
 library(recount.synth)
 
-suppressMessages()
+get_mdmap()
