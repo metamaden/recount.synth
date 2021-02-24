@@ -7,9 +7,10 @@
 md_post_handle_age(
   mdpre,
   mdpost,
-  mdpre.varlist = list(sample_id = "gsm", sample_title = "gsm_title", info = "info",
-    age = "age", age_temp = "age_temp"),
-  mdpost.varlist = list(age = "age")
+  mdpost.vl = list(age = "age"),
+  mdpre.vl = list(sample_id = "gsm", sample_title = "gsm_title", info = "info", age =
+    "age", age_temp = "age_temp"),
+  verbose = TRUE
 )
 }
 \arguments{
@@ -17,11 +18,13 @@ md_post_handle_age(
 
 \item{mdpost}{Table of postprocessed metadata.}
 
-\item{mdpre.varlist}{List mapping term categories (names) to column
+\item{mdpost.vl}{List mapping term categories (names) to column
+names in the mdpost postprocessed metadata matrix to be generated.}
+
+\item{mdpre.vl}{List mapping term categories (names) to column
 names in the mdpre preprocessed metadata matrix.}
 
-\item{mdpost.varlist}{List mapping term categories (names) to column
-names in the mdpost postprocessed metadata matrix to be generated.}
+\item{verbose}{Whether to show status messages (TRUE).}
 }
 \value{
 Postprocessed metadata table with a new column of mapped age

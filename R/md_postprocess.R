@@ -364,6 +364,36 @@ md_post_storage <- function(){
               "FFPE" = c("FFPE", "formalin")); return(sll)
 }
 
+#' Age terms to seed regex queries
+#' 
+#' Age terms to seed regex queries, called by md_post_handle_age().
+#' 
+#' @return List of terms (names) and string queries (values).
+#' @export
+md_age_infol <- function(){
+  ageinfol <- list("adult" = c("adult", "old", "senior"), 
+                   "young" = c("neonatal", "pediatric", "prepubescent", 
+                               "youth","young","child","infant","postnate"),
+                   "prenatal"=c("embryo","embryonic","prenatal","prenate"),
+                   "fetal" = c("fetal", "foetal", "fetus"),
+                   "neonatal" = c("neonate", "neonatal"),
+                   "maternal" = c("maternal", "mother"));return(ageinfol)
+}
+
+#' Age unit terms to seed regex queries
+#' 
+#' Age unit terms to seed regex queries, called by md_post_handle_age().
+#' 
+#' @return List of unit term labels (names) and string query seed terms 
+#' (values).
+#' @export
+md_age_unitl <- function(){
+  ageunitl <- list("years" = c("year", "yr", "y ", "(0-9)y.*"), 
+                   "months" = c("month", "mo"), "weeks" = c("week", "wk"), 
+                   "days" = c("day", "dy"), "passage" = c("passage"))
+  return(ageunitl)
+}
+
 # age terms and logic handling
 #' Handle age term mappings for metadata postprocessing
 #' 
@@ -372,23 +402,23 @@ md_post_storage <- function(){
 #' 
 #' @param mdpre Table of preprocessed metadata.
 #' @param mdpost Table of postprocessed metadata.
-#' @param mdpre.varlist List mapping term categories (names) to column
-#' names in the mdpre preprocessed metadata matrix.
-#' @param mdpost.varlist List mapping term categories (names) to column
+#' @param mdpost.vl List mapping term categories (names) to column
 #' names in the mdpost postprocessed metadata matrix to be generated.
+#' @param mdpre.vl List mapping term categories (names) to column
+#' names in the mdpre preprocessed metadata matrix.
+#' @param verbose Whether to show status messages (TRUE).
 #' @seealso md_postprocess(); md_preprocess()
 #' @return Postprocessed metadata table with a new column of mapped age
 #' info, values.
 #' @export
-md_post_handle_age <- function(mdpre, mdpost, 
-                               mdpre.varlist = list("sample_id" = "gsm",
-                                                    "sample_title" = "gsm_title",
-                                                    "info" = "info",
-                                                    "age" = "age", 
-                                                    "age_temp" = "age_temp"),
-                               mdpost.varlist = list("age" = "age")){
-  ap <- mdpre[,mdpre.varlist[["age"]]]
-  message("Getting filtered, formatted ages...")
+md_post_handle_age <- function(mdpre, mdpost, mdpost.vl = list("age" = "age"),
+                               mdpre.vl = list("sample_id" = "gsm",
+                                               "sample_title" = "gsm_title",
+                                               "info" = "info","age" = "age",
+                                               "age_temp" = "age_temp"),
+                               verbose = TRUE){
+  ap <- mdpre[,mdpre.vl[["age"]]]
+  if(verbose){message("Getting filtered, formatted ages...")}
   av <- unlist(lapply(ap, function(x){
     xsplit.num.form <- "NA"
     if(!x == "NA"){
@@ -398,48 +428,35 @@ md_post_handle_age <- function(mdpre, mdpost,
       xsplit.num <- xsplit[grepl("[0-9]+", xsplit)][1] # catch 1st numeric
       symv <- "[a-zA-Z]| |:|\\)|\\(|/|!|?|\\_|+|," # replace remaining symbols
       xsplit.num.form <- gsub(symv, "", xsplit.num)};return(xsplit.num.form)
-  }));av[av == ""] <- "NA"
-  mdpost[,mdpre.varlist[["age"]]] <- paste0("age_val:", as.character(av))
-  message("Getting filtered age data as new composite variable...")
+  })); av[av == ""] <- "NA"
+  mdpost[,mdpost.vl[["age"]]] <- paste0("age_val:", as.character(av))
+  if(verbose){message("Getting filtered age data as new variable...")}
   age.val.filt <- unlist(lapply(ap, function(x){
     xvf <- "NA"
     if(!x == "NA"){
-      # split values, then catch numeric value
       xval <- unlist(strsplit(x, ";")); cond1 <- grepl("[0-9]", xval) 
       cond2 <- grepl("age", xval) & !grepl("stage", xval) # catch age tag
       xvf <- paste(xval[(cond1|cond2)], collapse = ";")};return(xvf)}))
-  mdpre[,mdpre.varlist[["age_temp"]]] <- age.val.filt # assign new age var
-  message("Adding age metadata..."); age.cname <- mdpre.cname.agetemp
-  ageunitl <- list("years" = c("year", "yr", "y ", "(0-9)y.*"), 
-                   "months" = c("month", "mo"), "weeks" = c("week", "wk"), 
-                   "days" = c("day", "dy"), "passage" = c("passage"))
+  agetemp.cname<-mdpre.vl[["age_temp"]];mdpre[,agetemp.cname]<-age.val.filt
+  if(verbose){message("Adding age metadata...")}
+  ageunitl <- md_age_unitl()
   gf.run <- rep(FALSE, nrow(mdpre))
   for(term in names(ageunitl)){ # allows first units match
     gf.rep <- get_filt(v = get_pstr(v = ageunitl[[term]]), m = mdpre,
-                       varl = age.cname)
-    mdpost[,mdpost.varlist[["age"]]] <- appendvar(mdpost.varlist[["age"]],
-                                                  paste0("age_units:", term),
-                                                  gf.rep & !gf.run)
-    gf.run <- gf.run|gf.rep}
-  message("Adding age group info...")
-  ageinfol <- list("adult" = c("adult", "old", "senior"), 
-                   "young" = c("neonatal", "pediatric", "prepubescent", 
-                               "youth", "young", "child", 
-                               "infant", "postnate"), 
-                   "prenatal" = c("embryo", "embryonic", 
-                                  "prenatal", "prenate"),
-                   "fetal" = c("fetal", "foetal", "fetus"),
-                   "neonatal" = c("neonate", "neonatal"),
-                   "maternal" = c("maternal", "mother")); lgf = list()
-  
-  age.cname <- mdpost.varlist[["age"]]
-  title.cname <- mdpost.varlist[["sample_title"]]
+                       varl = agetemp.cname)
+    mdpost[,mdpost.vl[["age"]]] <- appendvar(var=mdpost.vl[["age"]],
+                                                 val=paste0("age_units:",term),
+                                                  filtv=gf.rep & !gf.run,
+                                                  m = mdpost)
+    gf.run <- gf.run|gf.rep};if(verbose){message("Adding age group info...")}
+  ageinfol <- md_age_infol(); lgf = list()
+  age.cname <- mdpre.vl[["age"]]; title.cname <- mdpre.vl[["sample_title"]]
   for(term in names(ageinfol)){
     age.var <- get_pstr(v = ageinfol[[term]])
     lgf[[term]][[age.cname]]<-get_filt(v=age.var,m=mdpre,varl=age.cname)
     title.var <- get_pstr(v = ageinfol[[term]])
     lgf[[term]][[title.cname]]<-get_filt(v=title.var,m=mdpre,varl=age.cname)}
-  message("Handling age info map logic..."); termv <- names(ageinfol)
+  if(verbose){message("Handling age info map logic...")};termv<-names(ageinfol)
   for(r in seq(nrow(mdpost))){
     sv.term <- "NA"; bool.term.age <- bool.term.title <- c()
     for(t in termv){
@@ -449,7 +466,8 @@ md_post_handle_age <- function(mdpre, mdpost,
     sv.term <- ifelse(length(tf.age) == 1, tf.age, 
                       ifelse(length(tf.title) == 1, tf.title, "NA"))
     info.val <- paste0("age_info:", sv.term)
-    mdpost[,age.cname][r] <- paste0(mdpost[, age.cname][r],";", info.val)}
+    mdpost[,mdpost.vl[["age"]]][r] <- paste0(mdpost[,mdpost.vl[["age"]]][r],
+                                             ";", info.val)}
   return(mdpost)
 }
 
@@ -458,10 +476,10 @@ md_post_handle_age <- function(mdpre, mdpost,
 #' Postprocess metadata prepared using md_preprocess()
 #'
 #' Perform postprocessing of previously prepreocessed sample metadata. This 
-#' produces the new harmonized variables (specified by arg mdpost.varlist),
+#' produces the new harmonized variables (specified by arg mdpost.vl),
 #' where harmonization means terms are mapped, lowercase, and "_" separated.
 #' Variable entries can include multiple terms separated by ";". The args
-#' mdpre.varlist and mdpost.varlist specify the various variable titles in
+#' mdpre.vl and mdpost.vl specify the various variable titles in
 #' the preprocess and postprocess dataset. The vars disease.search.vars,
 #' tissue.search.vars, and storage.info.vars specify the mdpre variables to
 #' search for disease, tissue, and storage info mappings.
@@ -516,7 +534,8 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
   for(dx in names(dxl)){
     ssv <- dxl[[dx]]; pstr <- get_pstr(v = ssv)
     gfilt <- get_filt(v = pstr, m = mdpre, ntfilt = ssv, varl = which.var)
-    dx.var <- appendvar(mdpost.vl[["disease"]], dx, gfilt)
+    dx.var <- appendvar(var = mdpost.vl[["disease"]], val = dx, 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["disease"]]] <- dx.var}
   if(verbose){message("Getting disease terms for cancers by type/location...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% disease.search.vars])
@@ -524,9 +543,11 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
   for(cxsub in names(cxsubl)){
     ssv <- cxsubl[[cxsub]]; pstr <- get_pstr(v = ssv)
     gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
-    dxvar1 <- appendvar(mdpost.vl[["disease"]], cxsub, gfilt)
+    dxvar1 <- appendvar(var = mdpost.vl[["disease"]], val = cxsub, 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar1
-    dxvar2 <- appendvar(mdpost.vl[["disease"]], "cancer", gfilt)
+    dxvar2 <- appendvar(var = mdpost.vl[["disease"]], val = "cancer", 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar2}
   if(verbose){message("Getting leukemia disease terms...")};leukl <- md_post_leukemia()
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% disease.search.vars])
@@ -534,9 +555,11 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
     pstr <- suppressMessages(get_pstr(v = leukl[[leuk]]))
     gfilt <- suppressMessages(get_filt(v = pstr, m = mdpre, ntfilt = pstr,
                                      varl = which.var))
-    dxvar1 <- appendvar(mdpost.vl[["disease"]], leuk, gfilt)
+    dxvar1 <- appendvar(var = mdpost.vl[["disease"]], val = leuk, 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar1
-    dxvar2 <- appendvar(mdpost.vl[["disease"]], "cancer", gfilt)
+    dxvar2 <- appendvar(var = mdpost.vl[["disease"]], val = "cancer", 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar2}
   if(verbose){message("Getting tissue and disease for cancer subtypes...")}
   which.var <- c(mdpre.vl[["sample_title"]], mdpre.vl[["sample_type"]],
@@ -544,25 +567,30 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
   for(cx in names(cxl)){
     ssv <- cxl[[cx]]; pstr <- get_pstr(v = ssv)
     gfilt<-suppressMessages(get_filt(v=pstr,m=mdpre,ntfilt=ssv,varl=which.var))
-    txvar <- appendvar(mdpost.vl[["tissue"]], cx, gfilt)
+    txvar <- appendvar(var = mdpost.vl[["tissue"]], val = cx, 
+                       filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar
-    dxvar <- appendvar(mdpost.vl[["disease"]], "cancer", gfilt)
+    dxvar <- appendvar(var = mdpost.vl[["disease"]], val = "cancer", 
+                       filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar}
   if(verbose){message("Getting tissue terms for cancers by type/location...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% tissue.search.vars])
   for(cxsub in names(cxsubl)){
     ssv <- cxsubl[[cxsub]]; pstr <- get_pstr(v = ssv)
     gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var);
-    txvar1 <- appendvar(mdpost.vl[["tissue"]], cxsub, gfilt)
+    txvar1 <- appendvar(var = mdpost.vl[["tissue"]], val = cxsub, 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar1
-    txvar2 <- appendvar(mdpost.vl[["tissue"]], "cancer", gfilt)
+    txvar2 <- appendvar(var = mdpost.vl[["tissue"]], val = "cancer", 
+                        filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar2}
   if(verbose){message("Getting leukemia tissue terms...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% tissue.search.vars])
   for(leuk in names(leukl)){
     pstr <- get_pstr(v = leukl[[leuk]])
     gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
-    txvar <- appendvar(mdpost.vl[["tissue"]], leuk, gfilt)
+    txvar <- appendvar(var = mdpost.vl[["tissue"]], val = leuk, 
+                       filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar}
   if(verbose){message("Getting tissue annotations...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% tissue.search.vars])
@@ -572,7 +600,8 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
     for(tx in names(sublist)){
       pstr <- get_pstr(v = sublist[[tx]])
       gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
-      txvar <- appendvar(mdpost.vl[["tissue"]], tx, gfilt)
+      txvar <- appendvar(var = mdpost.vl[["tissue"]], val = tx, 
+                         filtv = gfilt, m = mdpost)
       mdpost[,mdpost.vl[["tissue"]]] <- txvar}}
   if(verbose){message("Getting storage info...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% storage.info.vars])
@@ -580,18 +609,19 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
   for(sn in names(lstorage)){
     pstr <- get_pstr(v = lstorage[[sn]])
     gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
-    sinfovar <- appendvar(mdpost.vl[["storageinfo"]], sn, gfilt)
+    sinfovar <- appendvar(var = mdpost.vl[["storageinfo"]], val = sn, 
+                          filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["storageinfo"]]] <- sinfovar}
   if(verbose){message("Getting age info...")}
-  mdpost <- md_post_handle_age(mdpre = mdpre, mdpost = mdpost, 
-                               mdpre.vl = mdpre.vl, mdpost.vl = mdpost.vl)
+  mdpost<-md_post_handle_age(mdpre=mdpre,mdpost=mdpost,mdpre.vl=mdpre.vl,
+                               mdpost.vl = mdpost.vl, verbose = verbose)
   if(verbose){message("Getting sex info...")}
   mdpre.sex.cname <- mdpre.vl[["sex"]];mdpost.sex.cname <- mdpost.vl[["sex"]]
   femv <- get_pstr(v = c("female", "f", "FEMALE"))
   malev <- get_pstr(v = c("male", "MALE", "m"))
   mdpost[,mdpost.sex.cname] <- ifelse(grepl(femv, mdpre[,mdpre.sex.cname]),"F",
                        ifelse(grepl(malev, mdpre[,mdpre.sex.cname]),"M", "NA"))
-  message("Saving mdpost to ", mdpost.fpath);save(mdpost, file = mdpost.fpath)
-  return(NULL)
+  if(verbose){message("Saving mdpost to ", mdpost.fpath)}
+  save(mdpost, file = mdpost.fpath);return(NULL)
 }
 

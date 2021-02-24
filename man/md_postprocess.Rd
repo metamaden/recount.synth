@@ -52,10 +52,10 @@ Postprocessed metadata table.
 }
 \description{
 Perform postprocessing of previously prepreocessed sample metadata. This 
-produces the new harmonized variables (specified by arg mdpost.varlist),
+produces the new harmonized variables (specified by arg mdpost.vl),
 where harmonization means terms are mapped, lowercase, and "_" separated.
 Variable entries can include multiple terms separated by ";". The args
-mdpre.varlist and mdpost.varlist specify the various variable titles in
+mdpre.vl and mdpost.vl specify the various variable titles in
 the preprocess and postprocess dataset. The vars disease.search.vars,
 tissue.search.vars, and storage.info.vars specify the mdpre variables to
 search for disease, tissue, and storage info mappings.

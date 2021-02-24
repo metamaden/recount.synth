@@ -72,7 +72,7 @@ get_mdmap <- function(files.dname = "recount-methylation-files",
     stop("Preprocessed metadata not found at ", md.dpath, "...")
   };mdpre <- get(load(file.path(md.dpath, mdpre.fname)))
   message("Performing metadata postprocessing (term mapping)...")
-  md_postprocess(ts = ts, mdpre = mdpre);return(NULL)
+  suppressMessages(md_postprocess(ts = ts, mdpre = mdpre));return(NULL)
 }
 
 
