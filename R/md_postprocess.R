@@ -415,7 +415,8 @@ md_post_handle_age <- function(mdpre, mdpost,
                    "days" = c("day", "dy"), "passage" = c("passage"))
   gf.run <- rep(FALSE, nrow(mdpre))
   for(term in names(ageunitl)){ # allows first units match
-    gf.rep <- get_filt(v = get_pstr(v = ageunitl[[term]]), varl = age.cname)
+    gf.rep <- get_filt(v = get_pstr(v = ageunitl[[term]]), m = mdpre,
+                       varl = age.cname)
     mdpost[,mdpost.varlist[["age"]]] <- appendvar(mdpost.varlist[["age"]],
                                                   paste0("age_units:", term),
                                                   gf.rep & !gf.run)
@@ -435,9 +436,9 @@ md_post_handle_age <- function(mdpre, mdpost,
   title.cname <- mdpost.varlist[["sample_title"]]
   for(term in names(ageinfol)){
     age.var <- get_pstr(v = ageinfol[[term]])
-    lgf[[term]][[age.cname]] <- get_filt(v = age.var, varl = age.cname)
+    lgf[[term]][[age.cname]]<-get_filt(v=age.var,m=mdpre,varl=age.cname)
     title.var <- get_pstr(v = ageinfol[[term]])
-    lgf[[term]][[title.cname]] <- get_filt(v = title.var, varl = age.cname)}
+    lgf[[term]][[title.cname]]<-get_filt(v=title.var,m=mdpre,varl=age.cname)}
   message("Handling age info map logic..."); termv <- names(ageinfol)
   for(r in seq(nrow(mdpost))){
     sv.term <- "NA"; bool.term.age <- bool.term.title <- c()
@@ -481,6 +482,7 @@ md_post_handle_age <- function(mdpre, mdpost,
 #' search for tissue term mappings.
 #' @param storage.info.vars Term categories in preprocessed metadata to
 #' search for storage information term mappings.
+#' @param verbose Whether to show status messages (TRUE).
 #' @seealso md_preprocess()
 #' @return Postprocessed metadata table.
 #' @export
@@ -499,90 +501,91 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
                                                  "storageinfo" = "storageinfo"),
                            disease.search.vars = c("sample_title", "disease"),
                            tissue.search.vars = c("sample_type", "sample_title"),
-                           storage.info.vars = c("sample_type", "sample_title", "info")){
-  # manage paths
+                           storage.info.vars = c("sample_type", "sample_title", "info"),
+                           verbose = TRUE){
   mdpost.fn <- paste0(mdpost.fname, "_", ts, ".rda")
   mdpost.fpath <- file.path(md.dpath, mdpost.fn)
-  message("Will save mdpost data to ", mdpost.fpath, "...")
-  # mdpre columns to keep in mdpost
+  if(verbose){message("Will save mdpost data to ", mdpost.fpath, "...")}
   mdpost <- mdpre[,c(mdpre.vl[["sample_id"]], mdpre.vl[["study_id"]], 
                      mdpre.vl[["sample_title"]])]
-  # begin new mdpost columns
   mdpost[,mdpost.vl[["tissue"]]] <- mdpost[,mdpost.vl[["disease"]]] <- "NA"
   mdpost[,mdpost.vl[["age"]]] <- mdpost[,mdpost.vl[["sex"]]] <- "NA"
   mdpost[,mdpost.vl[["storageinfo"]]] <- "NA"
-  # map disease terms
-  message("Getting disease status..."); dxl <- md_post_disease()
+  if(verbose){message("Getting disease status...")}; dxl <- md_post_disease()
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% disease.search.vars])
   for(dx in names(dxl)){
     ssv <- dxl[[dx]]; pstr <- get_pstr(v = ssv)
-    gfilt <- get_filt(v = pstr, ntfilt = ssv, varl = which.var)
+    gfilt <- get_filt(v = pstr, m = mdpre, ntfilt = ssv, varl = which.var)
     dx.var <- appendvar(mdpost.vl[["disease"]], dx, gfilt)
     mdpost[,mdpost.vl[["disease"]]] <- dx.var}
-  message("Getting disease terms for cancers by type/location...")
+  if(verbose){message("Getting disease terms for cancers by type/location...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% disease.search.vars])
   cxsubl <- md_post_cancertype()
   for(cxsub in names(cxsubl)){
     ssv <- cxsubl[[cxsub]]; pstr <- get_pstr(v = ssv)
-    gfilt <- get_filt(pstr, varl = which.var)
+    gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
     dxvar1 <- appendvar(mdpost.vl[["disease"]], cxsub, gfilt)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar1
     dxvar2 <- appendvar(mdpost.vl[["disease"]], "cancer", gfilt)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar2}
-  message("Getting leukemia disease terms...");leukl <- md_post_leukemia()
+  if(verbose){message("Getting leukemia disease terms...")};leukl <- md_post_leukemia()
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% disease.search.vars])
   for(leuk in names(leukl)){
     pstr <- suppressMessages(get_pstr(v = leukl[[leuk]]))
-    gfilt<-suppressMessages(get_filt(v=pstr,ntfilt=pstr,varl=which.var))
+    gfilt <- suppressMessages(get_filt(v = pstr, m = mdpre, ntfilt = pstr,
+                                     varl = which.var))
     dxvar1 <- appendvar(mdpost.vl[["disease"]], leuk, gfilt)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar1
     dxvar2 <- appendvar(mdpost.vl[["disease"]], "cancer", gfilt)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar2}
-  message("Getting tissue and disease for cancer subtypes...")
+  if(verbose){message("Getting tissue and disease for cancer subtypes...")}
   which.var <- c(mdpre.vl[["sample_title"]], mdpre.vl[["sample_type"]],
                  mdpre.vl[["disease"]]);cxl <- md_post_cancer()
   for(cx in names(cxl)){
     ssv <- cxl[[cx]]; pstr <- get_pstr(v = ssv)
-    gfilt<-suppressMessages(get_filt(v=pstr,ntfilt=ssv,varl=which.var))
+    gfilt<-suppressMessages(get_filt(v=pstr,m=mdpre,ntfilt=ssv,varl=which.var))
     txvar <- appendvar(mdpost.vl[["tissue"]], cx, gfilt)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar
     dxvar <- appendvar(mdpost.vl[["disease"]], "cancer", gfilt)
     mdpost[,mdpost.vl[["disease"]]] <- dxvar}
-  message("Getting tissue terms for cancers by type/location...")
+  if(verbose){message("Getting tissue terms for cancers by type/location...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% tissue.search.vars])
   for(cxsub in names(cxsubl)){
     ssv <- cxsubl[[cxsub]]; pstr <- get_pstr(v = ssv)
-    gfilt <- get_filt(v = pstr, varl = which.var);
+    gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var);
     txvar1 <- appendvar(mdpost.vl[["tissue"]], cxsub, gfilt)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar1
     txvar2 <- appendvar(mdpost.vl[["tissue"]], "cancer", gfilt)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar2}
-  message("Getting leukemia tissue terms...")
+  if(verbose){message("Getting leukemia tissue terms...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% tissue.search.vars])
   for(leuk in names(leukl)){
-    pstr<-get_pstr(v=leukl[[leuk]]);gfilt<-get_filt(v=pstr,varl=which.var)
+    pstr <- get_pstr(v = leukl[[leuk]])
+    gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
     txvar <- appendvar(mdpost.vl[["tissue"]], leuk, gfilt)
     mdpost[,mdpost.vl[["tissue"]]] <- txvar}
-  message("Getting tissue annotations...")
+  if(verbose){message("Getting tissue annotations...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% tissue.search.vars])
   txl <- list();txl[["blood"]] <- md_post_tissue_blood()
   txl[["other"]] <- md_post_tissue()
   for(sublist in txl){
     for(tx in names(sublist)){
-      pstr<-get_pstr(v=sublist[[tx]]);gfilt<-get_filt(v=pstr,varl=which.var)
+      pstr <- get_pstr(v = sublist[[tx]])
+      gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
       txvar <- appendvar(mdpost.vl[["tissue"]], tx, gfilt)
       mdpost[,mdpost.vl[["tissue"]]] <- txvar}}
-  message("Getting storage info...")
+  if(verbose){message("Getting storage info...")}
   which.var <- unlist(mdpre.vl[names(mdpre.vl) %in% storage.info.vars])
   lstorage <- md_post_storage()
   for(sn in names(lstorage)){
-    pstr<-get_pstr(v=lstorage[[sn]]);gfilt<-get_filt(v=pstr,varl=which.var)
+    pstr <- get_pstr(v = lstorage[[sn]])
+    gfilt <- get_filt(v = pstr, m = mdpre, varl = which.var)
     sinfovar <- appendvar(mdpost.vl[["storageinfo"]], sn, gfilt)
     mdpost[,mdpost.vl[["storageinfo"]]] <- sinfovar}
-  message("Getting age info...")
+  if(verbose){message("Getting age info...")}
   mdpost <- md_post_handle_age(mdpre = mdpre, mdpost = mdpost, 
                                mdpre.vl = mdpre.vl, mdpost.vl = mdpost.vl)
-  message("Getting sex info...")
+  if(verbose){message("Getting sex info...")}
   mdpre.sex.cname <- mdpre.vl[["sex"]];mdpost.sex.cname <- mdpost.vl[["sex"]]
   femv <- get_pstr(v = c("female", "f", "FEMALE"))
   malev <- get_pstr(v = c("male", "MALE", "m"))

@@ -15,7 +15,8 @@ md_postprocess(
     storageinfo = "storageinfo"),
   disease.search.vars = c("sample_title", "disease"),
   tissue.search.vars = c("sample_type", "sample_title"),
-  storage.info.vars = c("sample_type", "sample_title", "info")
+  storage.info.vars = c("sample_type", "sample_title", "info"),
+  verbose = TRUE
 )
 }
 \arguments{
@@ -43,6 +44,8 @@ search for tissue term mappings.}
 
 \item{storage.info.vars}{Term categories in preprocessed metadata to
 search for storage information term mappings.}
+
+\item{verbose}{Whether to show status messages (TRUE).}
 }
 \value{
 Postprocessed metadata table.

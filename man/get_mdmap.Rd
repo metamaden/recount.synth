@@ -4,19 +4,14 @@
 \alias{get_mdmap}
 \title{Get mapped metadata}
 \usage{
-get_mdmap(
-  files.dname = "recount-methylation-files",
-  jsonfiltext.regex = ".*\\\\.json.filt$",
-  jsonfilt.dname = "gsm_json_filt",
-  md.dname = "metadata"
-)
+get_mdmap(files.dname = "recount-methylation-files", md.dname = "metadata")
 }
 \arguments{
 \item{files.dname}{Files dir name for instance ("recount-methylation-files")}
 
-\item{jsonfilt.dname}{Filtered JSON files dir name ("gsm_json_filt")}
-
 \item{md.dname}{Metadata dir name ("metadata").}
+
+\item{jsonfilt.dname}{Filtered JSON files dir name ("gsm_json_filt")}
 }
 \value{
 NULL, stored new mapped metadata.

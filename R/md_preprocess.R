@@ -111,8 +111,8 @@ mdpre_vars <- function(){
 #' ("md_preprocess").
 #' @param md.dname Name of directory, in files.dname, containing the instance 
 #' metadata files ("metadata).
-#' @param titles.fn Name of sample/GSM titles file ("gsm_jsontitledf).
-#' @param atable.fn Name of study annotation tables file 
+#' @param titlesfn.str Name of sample/GSM titles file ("gsm_jsontitledf).
+#' @param atablefn.str Name of study annotation tables file 
 #' ("geo_gse-atables_list")
 #' @param files.dname Main recountmethylation instance files directory 
 #' ("recount-methylation-files").
@@ -122,20 +122,22 @@ mdpre_vars <- function(){
 #' @export
 md_preprocess <- function(ts, mdpre.fn = "md_preprocess", 
                           md.dname = "metadata", 
-                          titles.fn = "gsm_jsontitledf",
-                          atable.fn = "geo_gse-atables_list",
+                          titlesfn.str = "gsm_jsontitledf",
+                          atablefn.str = "geo_gse-atables_list",
                           files.dname = "recount-methylation-files",
                           verbose = TRUE){
-  message("Loading GSM data files...")
+  if(verbose){message("Loading GSM data files...")}
   md.dpath <- file.path(files.dname, md.dname)
-  at.fpath <- file.path(md.dpath, paste0(atable.fn, ".rda"))
-  if(!file.exists(at.fpath)){
-    stop("Annotations table list file not found at ", at.fpath)}
-  tls <- get(load(at.fpath))
-  titles.fpath <- file.path(md.dpath, paste0(titles.fn, ".rda"))
-  if(!file.exists(titles.fpath)){
-    stop("GSM JSON titles vector file not found at ", titles.fpath)}
-  tdf <- get(load(titles.fpath)); message("Processing GSE flat files...")
+  md.lf<-list.files(md.dpath);md.lf<-md.lf[grepl(paste0(".*",ts,".*"),md.lf)]
+  at.fname <- md.lf[grepl(paste0(atablefn.str, ".*"), md.lf)][1]
+  titles.fname <- md.lf[grepl(paste0(titlesfn.str, ".*"), md.lf)][1]
+  if(!file.exists(file.path(md.dpath, at.fname))){
+    stop("Study anno. tables file not found at ", at.fpath)}
+  if(!file.exists(file.path(md.dpath, titles.fname))){
+    stop("GSM titles file not found at ",titles.fpath)}
+  tls <- get(load(file.path(md.dpath, at.fname)))
+  tdf <- get(load(file.path(md.dpath, titles.fname)))
+  message("Processing GSE flat files...")
   colv <- c("gsm","gse","sample_type","disease_state","sex","age")
   gat.all <- matrix(nrow = 0, ncol = length(colv));colnames(gat.all) <- colv
   cl <- mdpre_vars(); message("Appending tables data...")

@@ -8,8 +8,8 @@ md_preprocess(
   ts,
   mdpre.fn = "md_preprocess",
   md.dname = "metadata",
-  titles.fn = "gsm_jsontitledf",
-  atable.fn = "geo_gse-atables_list",
+  titlesfn.str = "gsm_jsontitledf",
+  atablefn.str = "geo_gse-atables_list",
   files.dname = "recount-methylation-files",
   verbose = TRUE
 )
@@ -24,9 +24,9 @@ md_preprocess(
 \item{md.dname}{Name of directory, in files.dname, containing the instance 
 metadata files ("metadata).}
 
-\item{titles.fn}{Name of sample/GSM titles file ("gsm_jsontitledf).}
+\item{titlesfn.str}{Name of sample/GSM titles file ("gsm_jsontitledf).}
 
-\item{atable.fn}{Name of study annotation tables file 
+\item{atablefn.str}{Name of study annotation tables file 
 ("geo_gse-atables_list")}
 
 \item{files.dname}{Main recountmethylation instance files directory 

@@ -55,19 +55,24 @@ new_instance_md <- function(instdir = file.path("recount-methylation-files",
 #' @return NULL, stored new mapped metadata.
 #' @export
 get_mdmap <- function(files.dname = "recount-methylation-files", 
-                      jsonfiltext.regex = ".*\\.json.filt$", 
-                      jsonfilt.dname = "gsm_json_filt", md.dname = "metadata"){
+                      md.dname = "metadata"){
   message("Handling metadata options...");md <- rmp_handle_metadata()
   if(is.null(md)){stop("Couldn't get metadata...")}
   version <- md[["version"]]; ts <- md[["timestamp"]]
   message("Getting platform info..."); accinfo <- rmp_handle_platform()
   platform <- accinfo[["platform_name"]];message("Using platform: ", platform)
-  
   message("Mining sample/GSM titles...");get_jsontitle(ts = ts)
   message("Getting study annotation tables from JSON files...")
-  get_atables(ts = ts)
+  suppressMessages(get_atables(ts = ts))
   message("Performing metadata preprocessing...");md_preprocess(ts = ts)
-  return(NULL)
+  md.dpath <- file.path(files.dname, md.dname); md.lf <- list.files(md.dpath)
+  mdpre.cond <- grepl(paste0(".*",ts,".*"), md.lf) & 
+    grepl(paste0("md_preprocess.*"), md.lf);mdpre.fname <- md.lf[mdpre.cond][1]
+  if(length(mdpre.fname) == 0){
+    stop("Preprocessed metadata not found at ", md.dpath, "...")
+  };mdpre <- get(load(file.path(md.dpath, mdpre.fname)))
+  message("Performing metadata postprocessing (term mapping)...")
+  md_postprocess(ts = ts, mdpre = mdpre);return(NULL)
 }
 
 
