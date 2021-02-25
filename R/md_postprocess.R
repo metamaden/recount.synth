@@ -5,8 +5,7 @@
 # Preprocess available sample metadata
 #
 
-require(data.table); require(rjson)
-library(recountmethylationManuscriptSupplement)
+# require(data.table); require(rjson)
 
 #-------------------------
 # md postprocess functions
@@ -437,9 +436,10 @@ md_post_handle_age <- function(mdpre, mdpost, mdpost.vl = list("age" = "age"),
       xval <- unlist(strsplit(x, ";")); cond1 <- grepl("[0-9]", xval) 
       cond2 <- grepl("age", xval) & !grepl("stage", xval) # catch age tag
       xvf <- paste(xval[(cond1|cond2)], collapse = ";")};return(xvf)}))
-  agetemp.cname<-mdpre.vl[["age_temp"]];mdpre[,agetemp.cname]<-age.val.filt
-  if(verbose){message("Adding age metadata...")}
-  ageunitl <- md_age_unitl()
+  agetemp.cname <- mdpre.vl[["age_temp"]]; mdpre[,ncol(mdpre) + 1] <- "NA"
+  colnames(mdpre)[ncol(mdpre)] <- agetemp.cname
+  if(!is.null(age.val.filt)){mdpre[,agetemp.cname] <- age.val.filt}
+  if(verbose){message("Adding age metadata...")};ageunitl <- md_age_unitl()
   gf.run <- rep(FALSE, nrow(mdpre))
   for(term in names(ageunitl)){ # allows first units match
     gf.rep <- get_filt(v = get_pstr(v = ageunitl[[term]]), m = mdpre,
@@ -451,11 +451,12 @@ md_post_handle_age <- function(mdpre, mdpost, mdpost.vl = list("age" = "age"),
     gf.run <- gf.run|gf.rep};if(verbose){message("Adding age group info...")}
   ageinfol <- md_age_infol(); lgf = list()
   age.cname <- mdpre.vl[["age"]]; title.cname <- mdpre.vl[["sample_title"]]
+  which.var <- c(mdpre.vl[["age"]], mdpre.vl[["sample_title"]])
   for(term in names(ageinfol)){
     age.var <- get_pstr(v = ageinfol[[term]])
-    lgf[[term]][[age.cname]]<-get_filt(v=age.var,m=mdpre,varl=age.cname)
+    lgf[[term]][[age.cname]]<-get_filt(v=age.var,m=mdpre,varl=which.var)
     title.var <- get_pstr(v = ageinfol[[term]])
-    lgf[[term]][[title.cname]]<-get_filt(v=title.var,m=mdpre,varl=age.cname)}
+    lgf[[term]][[title.cname]]<-get_filt(v=title.var,m=mdpre,varl=which.var)}
   if(verbose){message("Handling age info map logic...")};termv<-names(ageinfol)
   for(r in seq(nrow(mdpost))){
     sv.term <- "NA"; bool.term.age <- bool.term.title <- c()
@@ -507,19 +508,22 @@ md_post_handle_age <- function(mdpre, mdpost, mdpost.vl = list("age" = "age"),
 md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
                            md.dpath = file.path("recount-methylation-files", 
                                               "metadata"),
-                           mdpre.vl = list("study_id" = "gse", 
-                                                "sample_id" = "gsm",
-                                                "sample_title" = "gsm_title",
-                                                "disease" = "disease_state",
-                                                "sample_type" = "sample_type",
-                                                "sex" = "sex", "info" = "info"),
+                           mdpre.vl=list("study_id"="gse","sample_id"="gsm",
+                                         "sample_title" = "gsm_title",
+                                         "disease" = "disease_state",
+                                         "sample_type" = "sample_type",
+                                         "sex" = "sex", "info" = "info",
+                                         "age" = "age", 
+                                         "age_temp" = "age_temp"),
                            mdpost.vl = list("tissue" = "tissue",
-                                                 "disease" = "disease",
-                                                 "age" = "age", "sex" = "sex",
-                                                 "storageinfo" = "storageinfo"),
+                                            "disease" = "disease",
+                                            "age" = "age", "sex" = "sex",
+                                            "storageinfo" = "storageinfo"),
                            disease.search.vars = c("sample_title", "disease"),
-                           tissue.search.vars = c("sample_type", "sample_title"),
-                           storage.info.vars = c("sample_type", "sample_title", "info"),
+                           tissue.search.vars = c("sample_type", 
+                                                  "sample_title"),
+                           storage.info.vars = c("sample_type", 
+                                                 "sample_title", "info"),
                            verbose = TRUE){
   mdpost.fn <- paste0(mdpost.fname, "_", ts, ".rda")
   mdpost.fpath <- file.path(md.dpath, mdpost.fn)
@@ -613,8 +617,10 @@ md_postprocess <- function(ts, mdpre, mdpost.fname = "md_postprocess",
                           filtv = gfilt, m = mdpost)
     mdpost[,mdpost.vl[["storageinfo"]]] <- sinfovar}
   if(verbose){message("Getting age info...")}
-  mdpost<-md_post_handle_age(mdpre=mdpre,mdpost=mdpost,mdpre.vl=mdpre.vl,
-                               mdpost.vl = mdpost.vl, verbose = verbose)
+  mdpost<-suppressMessages(md_post_handle_age(mdpre=mdpre,mdpost=mdpost,
+                                              mdpre.vl=mdpre.vl,
+                                              mdpost.vl = mdpost.vl,
+                                              verbose = verbose))
   if(verbose){message("Getting sex info...")}
   mdpre.sex.cname <- mdpre.vl[["sex"]];mdpost.sex.cname <- mdpost.vl[["sex"]]
   femv <- get_pstr(v = c("female", "f", "FEMALE"))
